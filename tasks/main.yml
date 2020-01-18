@@ -22,7 +22,7 @@
 
 - name: 'install Gitea using the package manager'
   package:
-    name: gitea
+    name: "{{ gitea_pkg_name }}"
     state: present
   when: "gitea_use_pkg | bool"
 

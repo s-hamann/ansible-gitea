@@ -1,3 +1,6 @@
 ---
 gitea_has_pkg: true
+gitea_pkg_name:
+  - 'gitea'
+  - 'gitea-openrc'
 gitea_gnupg_package: 'gnupg'
