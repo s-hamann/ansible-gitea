@@ -1,0 +1,143 @@
+---
+# This file handles installing Gitea using the official binary release.
+# This includes
+# * installing dependencies using the package manager
+# * getting the latest version
+# * downloading the binary
+# * validating the signature
+# * installing the binary to the correct path
+# * creating the necessary system user account
+# * installing a systemd service file/OpenRC init script
+
+- name: 'install dependencies'
+  package:
+    name: "{{ gitea_dependencies }}"
+    state: present
+
+- block:
+  - name: 'get available versions of Gitea'
+    uri:
+      url: "{{ gitea_base_url }}"
+      return_content: true
+    register: _gitea_downloads
+
+  - name: 'determine latest version of Gitea'
+    set_fact:
+      gitea_version: "{{ _gitea_downloads.content | regex_findall('(?<=/gitea/)[0-9]+\\.[0-9]+\\.[0-9]+(?=/)') | sort_versions | last }}"
+
+  when: "gitea_version is not defined"
+
+- name: 'get currently installed version of Gitea'
+  command: '/usr/local/bin/gitea --version'
+  check_mode: false
+  changed_when: false
+  ignore_errors: true
+  register: _gitea_version
+
+- name: 'determine version number'
+  set_fact:
+    _current_gitea_version: "{{ _gitea_version.stdout | default('') | regex_search('(?<=Gitea version )[0-9.]+(-rc[0-9]+)?(?= )') }}"
+
+- name: "download and install Gitea {{ gitea_version }}"
+  block:
+
+  - name: 'create temporary directory'
+    tempfile:
+      state: directory
+    diff: false
+    register: _tmpdir
+    notify: 'gitea_remove_tmpdir'
+
+  - name: 'determine file name'
+    set_fact:
+      _filename: "gitea-{{ gitea_version }}-linux-{{ gitea_arch }}"
+
+  - name: 'download gitea'
+    get_url:
+      url: "{{ gitea_base_url }}/{{ gitea_version }}/{{ filename }}"
+      dest: "{{ _tmpdir.path }}"
+    loop:
+      - "{{ _filename }}"
+      - "{{ _filename }}.asc"
+    loop_control:
+      loop_var: filename
+
+  - name: 'create temporary GnuPG directory'
+    file:
+      path: "{{ _tmpdir.path }}/.gnupg"
+      state: directory
+      owner: root
+      group: root
+      mode: 0700
+    diff: false
+
+  - name: 'get the PGP keys'
+    command: "gpg --keyserver hkps.pool.sks-keyservers.net --no-default-keyring --keyring trustedkeys.kbx --recv-key {{ gitea_pgp_fingerprint | quote }}"
+    environment:
+      GNUPGHOME: "{{ _tmpdir.path }}/.gnupg"
+    register: '_gpg_recv_key'
+    changed_when: "_gpg_recv_key is not failed and 'imported:' in _gpg_recv_key.stderr"
+
+  - name: 'verify signature'
+    command: "gpgv '{{ _tmpdir.path }}/{{ _filename }}.asc' '{{ _tmpdir.path }}/{{ _filename }}'"
+    environment:
+      GNUPGHOME: "{{ _tmpdir.path }}/.gnupg"
+    changed_when: false
+
+  - name: 'install gitea'
+    copy:
+      dest: '/usr/local/bin/gitea'
+      src: "{{ _tmpdir.path }}/{{ _filename }}"
+      remote_src: true
+      owner: root
+      group: root
+      mode: 0755
+
+  when: "gitea_version != _current_gitea_version"
+
+- name: 'create Gitea system user group'
+  group:
+    name: "{{ gitea_group }}"
+    system: true
+    state: present
+
+- name: 'create Gitea system user account'
+  user:
+    name: "{{ gitea_user }}"
+    password: '*'
+    group: "{{ gitea_group }}"
+    home: "{{ gitea_data_path }}"
+    comment: 'Gitea service account'
+    shell: '/bin/sh'
+    system: true
+    state: present
+
+- name: 'check for MariaDB (systemd)'
+  stat:
+    path: '/lib/systemd/system/mariadb.service'
+  register: _mariadb_service
+  when: "gitea_database_type == 'mysql' and ansible_facts['service_mgr'] == 'systemd'"
+
+- name: 'check for MariaDB (non-systemd)'
+  stat:
+    path: '/etc/init.d/mariadb'
+  register: _initd_mariadb
+  when: "gitea_database_type == 'mysql' and ansible_facts['service_mgr'] != 'systemd'"
+
+- name: 'install systemd service file'
+  template:
+    dest: '/etc/systemd/system/gitea.service'
+    src: 'gitea.service.j2'
+    owner: root
+    group: root
+    mode: 0644
+  when: "ansible_facts['service_mgr'] == 'systemd'"
+
+- name: 'install OpenRC init script'
+  template:
+    dest: '/etc/init.d/gitea'
+    src: 'gitea.openrc.j2'
+    owner: root
+    group: root
+    mode: 0755
+  when: "ansible_facts['service_mgr'] == 'openrc'"

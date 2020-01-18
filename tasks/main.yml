@@ -1,0 +1,247 @@
+---
+- name: 'gather os specific variables'
+  include_vars: "{{ vars_file }}"
+  loop:
+    - 'default.yml'
+    - "{{ ansible_facts['os_family'] | lower }}.yml"
+    - "{{ ansible_facts['distribution'] | lower }}.yml"
+    - "{{ ansible_facts['distribution'] | lower }}-{{ ansible_facts['distribution_major_version'] }}.yml"
+    - "{{ ansible_facts['distribution'] | lower }}-{{ ansible_facts['distribution_version'] }}.yml"
+  loop_control:
+    loop_var: vars_file
+  when: "(vars_file is abs and vars_file is file) or (vars_file is not abs and (role_path ~ '/vars/' ~ vars_file) is file)"
+
+- name: 'check for bash'
+  stat:
+    path: '/bin/bash'
+  register: _bin_bash
+
+- name: 'ensure configuration consistency'
+  set_fact:
+    gitea_use_pkg: "{{ gitea_has_pkg | bool and gitea_use_pkg | bool }}"
+
+- name: 'install Gitea using the package manager'
+  package:
+    name: gitea
+    state: present
+  when: "gitea_use_pkg | bool"
+
+- name: 'install Gitea from binary'
+  include_tasks: install_gitea_binary.yml
+  when: "not gitea_use_pkg | bool"
+
+- name: 'install additional dependencies'
+  package:
+    name: "{{ pkg.pkg }}"
+    state: present
+  when: "pkg.when"
+  loop:
+    - pkg: 'git-lfs'
+      when: "{{ gitea_enable_lfs | bool }}"
+    - pkg: "{{ gitea_gnupg_package }}"
+      when: "{{ gitea_enable_signing | bool }}"
+  loop_control:
+    loop_var: 'pkg'
+    label: "{{ pkg.pkg }}"
+
+- name: "add {{ gitea_user }} to extra groups"
+  user:
+    name: "{{ gitea_user }}"
+    groups: "{{ gitea_extra_groups }}"
+    append: true
+  notify: 'restart gitea'
+  when: "[gitea_extra_groups | default([])] | flatten | count"
+
+- name: "harden gitea.service"
+  block:
+    - name: "create override directory for gitea.service"
+      file:
+        path: '/etc/systemd/system/gitea.service.d/'
+        state: directory
+        owner: root
+        group: root
+        mode: 0755
+
+    - name: "install override file for gitea.service"
+      template:
+        dest: '/etc/systemd/system/gitea.service.d/override.conf'
+        src: 'gitea_override.conf.j2'
+        owner: root
+        group: root
+        mode: 0644
+      notify:
+        - 'gitea_reload_service_files'
+        - 'restart gitea'
+
+  when: "ansible_facts['service_mgr'] == 'systemd'"
+
+- name: 'allow non-root users to bind to low ports'
+  sysctl:
+    name: 'net.ipv4.ip_unprivileged_port_start'
+    value: '0'
+    sysctl_file: '/etc/sysctl.d/unprivileged_ports.conf'
+    state: present
+  when: "ansible_facts['service_mgr'] != 'systemd' and gitea_port | int < 1024"
+
+- name: 'create required directories'
+  file:
+    path: "{{ directory.path }}"
+    state: directory
+    owner: "{{ directory.owner | default(gitea_user) }}"
+    group: "{{ directory.group | default(gitea_group) }}"
+    mode: "{{ directory.mode | default(0750) }}"
+  loop:
+    - path: '/etc/gitea'
+      owner: root
+    - path: "{{ gitea_data_path }}"
+    - path: "{{ gitea_custom_path }}"
+      owner: root
+    - path: "{{ gitea_log_path }}"
+  loop_control:
+    loop_var: directory
+    label: "{{ directory.path }}"
+
+- name: 'check if Gitea is already configured'
+  stat:
+    path: '/etc/gitea/app.ini'
+  register: _stat_appini
+
+- name: 'read current config file'
+  slurp:
+    src:  '/etc/gitea/app.ini'
+  register: _slurp_appini
+  when: "_stat_appini.stat.exists"
+
+- include_tasks: get_secrets.yml
+  loop:
+    - 'SECRET_KEY'
+    - 'INTERNAL_TOKEN'
+    - 'JWT_SECRET'
+    - 'LFS_JWT_SECRET'
+  loop_control:
+    loop_var: secret
+
+- name: 'configure Gitea'
+  template:
+    dest: '/etc/gitea/app.ini'
+    src: 'app.ini.j2'
+    owner: root
+    group: "{{ gitea_group }}"
+    mode: 0640
+  no_log: true
+  notify: 'restart gitea'
+
+- name: 'unset secrets'
+  set_fact:
+    _slurp_appini:
+    _secret_value:
+    _generate_secret:
+    _SECRET_KEY:
+    _INTERNAL_TOKEN:
+    _JWT_SECRET:
+    _LFS_JWT_SECRET:
+
+- name: 'create server-side commit signing key'
+  command: "su {{ gitea_user }} -c 'gpg --batch --generate-key'"
+  args:
+    warn: false # su is needed, otherwise Ansible might require a password to become the gitea user
+    creates: "{{ gitea_data_path }}/.gnupg/private-keys-v1.d/"
+    stdin: |
+      %no-protection
+      Key-Type: {{ gitea_signing_key_type }}
+      Key-Length: {{ gitea_signing_key_length }}
+      Key-Usage: sign
+      Name-Real: {{ gitea_committer_name }}
+      Name-Email: {{ gitea_committer_email }}
+      # Discard the time, use only the date as the creation timestamp
+      Creation-Date: {{ lookup('pipe', 'date +%Y-%m-%d') }}
+  when: "gitea_enable_signing | bool"
+
+- name: 'configure git command line client'
+  ini_file:
+    path: "{{ gitea_data_path }}/.gitconfig"
+    section: "{{ item.section }}"
+    option: "{{ item.option }}"
+    value: "{{ item.value }}"
+    state: present
+  loop:
+    - section: 'commit'
+      option: 'gpgsign'
+      value: "{{ gitea_enable_signing | bool | string | lower }}"
+    - section: 'user'
+      option: 'name'
+      value: "{{ gitea_committer_name }}"
+    - section: 'user'
+      option: 'email'
+      value: "{{ gitea_committer_email }}"
+  loop_control:
+    label: "{{ item.section }}.{{ item.option }} = {{ item.value }}"
+
+- name: 'create initial local user accounts'
+  command: "su {{ gitea_user }} -c 'PATH=\"{{ ansible_facts['env']['PATH'] }}:/usr/local/bin\" gitea -c /etc/gitea/app.ini admin create-user --username {{ user.name | quote }} --password {{ user.password | quote }} --email {{ user.email | quote }} {{ user.admin | default(false) | bool | ternary('--admin', '') }}'"
+  args:
+    chdir: "{{ gitea_data_path }}"
+    warn: false # su is needed, otherwise Ansible might require a password to become the gitea user
+  register: _create_user
+  failed_when: "_create_user.rc > 0 and 'user already exists' not in _create_user.stdout"
+  changed_when: "'New user ''' ~ user.name ~ ''' has been successfully created' in _create_user.stdout"
+  no_log: true
+  loop: "{{ gitea_users }}"
+  loop_control:
+    loop_var: user
+    label: "{{ user.name }}"
+
+- name: 'configure external authentication sources'
+  gitea_auth:
+    name: "{{ provider.name }}"
+    type: "{{ provider.type }}"
+    host: "{{ provider.host | default(omit) }}"
+    port: "{{ provider.port | default(omit) }}"
+    encryption: "{{ provider.encryption | default(omit) }}"
+    bind_dn: "{{ provider.bind_dn | default(omit) }}"
+    bind_password: "{{ provider.bind_password | default(omit) }}"
+    user_search_base: "{{ provider.user_search_base | default(omit) }}"
+    user_filter: "{{ provider.user_filter | default(omit) }}"
+    admin_filter: "{{ provider.admin_filter | default(omit) }}"
+    username_attribute: "{{ provider.username_attribute | default(omit) }}"
+    email_attribute: "{{ provider.email_attribute | default(omit) }}"
+    firstname_attribute: "{{ provider.firstname_attribute | default(omit) }}"
+    surname_attribute: "{{ provider.surname_attribute | default(omit) }}"
+    sshkey_attribute: "{{ provider.sshkey_attribute | default(omit) }}"
+    sync_users: "{{ provider.sync_users | default(omit) }}"
+    provider: "{{ provider.provider | default(omit) }}"
+    client_id: "{{ provider.client_id | default(omit) }}"
+    client_secret: "{{ provider.client_secret | default(omit) }}"
+    auto_discover_url: "{{ provider.auto_discover_url | default(omit) }}"
+    use_custom_urls: "{{ provider.use_custom_urls | default(omit) }}"
+    custom_auth_url: "{{ provider.custom_auth_url | default(omit) }}"
+    custom_email_url: "{{ provider.custom_email_url | default(omit) }}"
+    custom_profile_url: "{{ provider.custom_profile_url | default(omit) }}"
+    custom_token_url: "{{ provider.custom_token_url | default(omit) }}"
+    state: present
+  environment:
+    PATH: "{{ ansible_facts['env']['PATH'] }}:/usr/local/bin"
+  loop: "{{ gitea_auth_providers }}"
+  loop_control:
+    loop_var: provider
+    label: "{{ provider.name }}"
+  no_log: "{{ provider.bind_password is defined or provider.client_secret is defined }}"
+
+- name: 'install custom files'
+  copy:
+    src: "{{ gitea_custom_files }}/"
+    dest: "{{ gitea_custom_path }}"
+    owner: root
+    group: root
+    directory_mode: 0755
+  when: "gitea_custom_files is defined"
+  notify: 'restart gitea'
+
+# If the unit file changed, reload it now.
+- meta: flush_handlers
+
+- name: 'enable and start Gitea'
+  service:
+    name: 'gitea'
+    enabled: true
+    state: "{{ ansible_facts['is_chroot'] | ternary(omit, 'started') }}"

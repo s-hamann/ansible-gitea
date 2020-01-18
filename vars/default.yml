@@ -1,0 +1,6 @@
+---
+gitea_has_pkg: false
+gitea_gnupg_package: 'gnupg2'
+gitea_dependencies:
+  - 'git'
+  - "{{ gitea_gnupg_package }}"

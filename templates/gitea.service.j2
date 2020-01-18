@@ -1,0 +1,32 @@
+{# vim: filetype=systemd.jinja2 #}
+[Unit]
+Description=Gitea (Git with a cup of tea)
+After=network.target
+Requires=network.target
+{% if gitea_database_host.startswith('127.') or gitea_database_host.startswith('localhost') or gitea_database_host.startswith('/') %}
+{% if gitea_database_type == 'postgres' %}
+Requires=postgresql.service
+{% elif gitea_database_type == 'mysql' %}
+{% if _mariadb_service.stat.exists %}
+Requires=mariadb.service
+{% else %}
+Requires=mysql.service
+{% endif %}
+{% endif %}
+{% endif %}
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=2s
+
+User={{ gitea_user }}
+Group={{ gitea_group }}
+
+ExecStart=/usr/local/bin/gitea web --config /etc/gitea/app.ini
+WorkingDirectory={{ gitea_data_path | quote }}
+RuntimeDirectory=gitea
+Environment="GITEA_WORK_DIR={{ gitea_data_path }}" "GITEA_CUSTOM={{ gitea_custom_path }}"
+
+[Install]
+WantedBy=multi-user.target

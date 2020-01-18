@@ -1,0 +1,23 @@
+---
+gitea_use_pkg: true
+gitea_user: 'git'
+gitea_group: "{{ gitea_user }}"
+gitea_extra_groups: []
+gitea_data_path: '/var/lib/gitea'
+gitea_log_path: '/var/log/gitea'
+gitea_custom_path: "/etc/gitea/custom"
+gitea_inaccessible_paths: []
+gitea_bind_address: '127.0.0.1'
+gitea_port: "{{ (gitea_tls_cert is defined) | ternary(443, 80) }}"
+gitea_loglevel: 'Info'
+gitea_enable_mailer: "{{ gitea_mailer_host is defined }}"
+gitea_enable_lfs: false
+gitea_enable_indexer: true
+gitea_enable_signing: true
+gitea_committer_name: 'Gitea Bot'
+gitea_committer_email: 'invalid'
+gitea_signing_key_type: 'RSA'
+gitea_signing_key_length: 4096
+gitea_extra_options: {}
+gitea_users: []
+gitea_auth_providers: []

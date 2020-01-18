@@ -1,0 +1,76 @@
+---
+gitea_arch: "{{ 'amd64' if ansible_facts['architecture'] == 'x86_64' else ansible_facts['architecture'] }}"
+gitea_base_url: 'https://dl.gitea.io/gitea/'
+gitea_pgp_fingerprint: '7C9E68152594688862D62AF62D9AE806EC1592E2'
+gitea_default_options:
+  DEFAULT:
+    RUN_USER: "{{ gitea_user }}"
+    RUN_MODE: 'prod'
+  repository:
+    ROOT: "{{ gitea_data_path }}/repos"
+    SCRIPT_TYPE: "{{ _bin_bash.stat.exists | ternary('bash', 'sh') }}"
+  repository.signing:
+    SIGNING_KEY: "{{ gitea_enable_signing | bool | ternary('default', 'none') }}"
+  server:
+    PROTOCOL: "{{ (gitea_tls_cert is defined) | ternary('https', 'http') }}"
+    DOMAIN: "{{ ansible_facts['fqdn'] }}"
+    HTTP_ADDR: "{{ gitea_bind_address }}"
+    HTTP_PORT: "{{ gitea_port }}"
+    SSH_LISTEN_HOST: "{{ gitea_bind_address }}"
+    OFFLINE_MODE: true
+    CERT_FILE: "{{ gitea_tls_cert | default(omit) }}"
+    KEY_FILE: "{{ gitea_tls_cert_key | default(omit) }}"
+    LFS_START_SERVER: "{{ gitea_enable_lfs }}"
+    LFS_JWT_SECRET: '`{{ _LFS_JWT_SECRET }}`'
+  database:
+    DB_TYPE: "{{ gitea_database_type | mandatory }}"
+    HOST: "{{ gitea_database_host | default(omit) }}"
+    NAME: "{{ (gitea_database_type != 'sqlite3') | ternary(gitea_database_name, omit) }}"
+    USER: "{{ gitea_database_user | default(omit) }}"
+    PASSWD: "{{ '`' ~ gitea_database_password ~ '`' if gitea_database_password is defined else omit }}"
+    CHARSET: 'utf8mb4'
+    PATH: "{{ (gitea_database_type == 'sqlite3') | ternary(gitea_database_name, omit) }}"
+    LOG_SQL: "{{ gitea_loglevel | lower in ['trace', 'debug'] }}"
+  indexer:
+    REPO_INDEXER_ENABLED: "{{ gitea_enable_indexer | bool }}"
+  security:
+    INSTALL_LOCK: true
+    SECRET_KEY: '`{{ _SECRET_KEY }}`'
+    INTERNAL_TOKEN: '`{{ _INTERNAL_TOKEN }}`'
+    COOKIE_USERNAME: 'gitea_user'
+    COOKIE_REMEMBER_NAME: 'gitea_persistent'
+    PASSWORD_HASH_ALGO: 'argon2'
+  service:
+    ENABLE_NOTIFY_MAIL: "{{ gitea_enable_mailer }}"
+  mailer:
+    ENABLED: "{{ gitea_enable_mailer }}"
+    HOST: "{{ gitea_mailer_host | default(omit) }}"
+    FROM: "{{ gitea_mailer_from | default(omit)  }}"
+    USER: "{{ gitea_mailer_user | default(omit) }}"
+    PASSWD: "{{ '`' ~ gitea_mailer_password ~ '`' if gitea_mailer_password is defined else omit }}"
+    SEND_AS_PLAIN_TEXT: true
+    MAILER_TYPE: "{{ (gitea_mailer_host is defined) | ternary('smtp', 'sendmail') }}"
+  session:
+    COOKIE_SECURE: "{{ gitea_tls_cert is defined }}"
+    COOKIE_NAME: 'gitea_session'
+  log:
+    ROOT_PATH: "{{ gitea_log_path }}"
+    # Default logger
+    MODE: 'file'
+    LEVEL: "{{ gitea_loglevel }}"
+    # Macaron logger
+    REDIRECT_MACARON_LOG: true
+    MACARON: 'file'
+    # Router logger
+    ROUTER: 'file'
+    ROUTER_LOG_LEVEL: "{{ gitea_loglevel }}"
+    # Access logger
+    ENABLE_ACCESS_LOG: "{{ gitea_loglevel | lower in ['trace', 'debug'] }}"
+    ACCESS: 'file'
+    # XORM logger
+    ENABLE_XORM_LOG: "{{ gitea_loglevel | lower in ['trace', 'debug', 'info'] }}"
+    XORM: 'file'
+  oauth2:
+    JWT_SECRET: '`{{ _JWT_SECRET }}`'
+  other:
+    SHOW_FOOTER_VERSION: false

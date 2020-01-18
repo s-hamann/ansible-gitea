@@ -1,0 +1,10 @@
+{# vim: filetype=ini.jinja2 #}
+{{ ansible_managed | comment }}
+
+{% for key, options in (gitea_default_options | combine(gitea_extra_options, recursive=True)).items() %}
+[{{ key }}]
+{% for k, v in options.items() if v != omit %}
+{{ k }} = {{ v }}
+{% endfor %}
+
+{% endfor %}

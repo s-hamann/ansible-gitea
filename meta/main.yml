@@ -1,0 +1,28 @@
+galaxy_info:
+  author: Sebastian Hamann
+  description: Install and configure Gitea
+
+  license: MIT
+
+  min_ansible_version: 2.8
+
+  platforms:
+  - name: Gentoo
+    versions:
+      - any
+  - name: Debian
+    versions:
+      - buster
+  - name: Alpine
+    versions:
+      - any
+  - name: GenericLinux
+    versions:
+      - any
+
+  galaxy_tags:
+    - development
+    - git
+    - gitea
+
+dependencies: []

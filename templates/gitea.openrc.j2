@@ -1,0 +1,45 @@
+{# vim: filetype=gentoo-init-d.jinja2 #}
+#!/sbin/openrc-run
+
+name=gitea
+description="Gitea, a self-hosted Git service"
+
+: ${GITEA_CONF:=/etc/gitea/app.ini}
+: ${GITEA_USER:={{ gitea_user }}}
+: ${GITEA_GROUP:={{ gitea_group }}}
+: ${GITEA_WORK_DIR:={{ gitea_data_path }}}
+: ${GITEA_CUSTOM:={{ gitea_custom_path }}}
+: ${GITEA_LOG_FILE:={{ gitea_log_path }}/http.log}
+
+supervisor=supervise-daemon
+command="/usr/local/bin/gitea"
+command_args="--config '${GITEA_CONF}' web"
+command_background="true"
+command_user="${GITEA_USER}:${GITEA_GROUP}"
+error_log="/var/log/${RC_SVCNAME}/${RC_SVCNAME}.err"
+pidfile="/run/${RC_SVCNAME}.pid"
+required_files="${GITEA_CONF}"
+supervise_daemon_args="--env GITEA_WORK_DIR='${GITEA_WORK_DIR}' \
+    --chdir '${GITEA_WORK_DIR}' \
+    --stdout '${GITEA_LOG_FILE}' --stderr '${GITEA_LOG_FILE}'"
+
+depend() {
+        use logger dns
+        need net
+{%- if gitea_database_host.startswith('127.') or gitea_database_host.startswith('localhost') or gitea_database_host.startswith('/') %}
+{% if gitea_database_type == 'postgres' %}
+ postgresql
+{% elif gitea_database_type == 'mysql' %}
+{% if _initd_mariadb.stat.exists %}
+ mariadb
+{% else %}
+ mysql
+{% endif %}
+{% else %}
+
+{% endif %}
+{% else %}
+
+{% endif %}
+        after firewall
+}
