@@ -20,6 +20,12 @@
   set_fact:
     gitea_use_pkg: "{{ gitea_has_pkg | bool and gitea_use_pkg | bool }}"
 
+- name: 'set user name to distribution package value'
+  set_fact:
+    gitea_user: "{{ gitea_pkg_user }}"
+    gitea_group: "{{ gitea_pkg_group }}"
+  when: "gitea_use_pkg | bool"
+
 - name: 'install Gitea using the package manager'
   package:
     name: "{{ gitea_pkg_name }}"

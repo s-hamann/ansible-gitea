@@ -46,6 +46,7 @@ Role Variables
 * `gitea_user`, `gitea_group`  
   The system user account and system group to run Gitea as.
   `gitea_user` defaults to `git`; `gitea_group` defaults to the user name.
+  When using a distribution package (cf. `gitea_use_pkg`), these settings are ignored.
 * `gitea_data_path`  
   The path where repositories, user avatars and similar data is stored.
   Defaults to `/var/lib/gitea`.

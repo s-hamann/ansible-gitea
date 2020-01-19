@@ -3,4 +3,6 @@ gitea_has_pkg: true
 gitea_pkg_name:
   - 'gitea'
   - 'gitea-openrc'
+gitea_pkg_user: 'gitea'
+gitea_pkg_group: 'www-data'
 gitea_gnupg_package: 'gnupg'

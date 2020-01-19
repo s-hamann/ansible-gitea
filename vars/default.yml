@@ -1,6 +1,8 @@
 ---
 gitea_has_pkg: false
 gitea_pkg_name: 'gitea'
+gitea_pkg_user: 'git'
+gitea_pkg_group: "{{ gitea_pkg_user }}"
 gitea_gnupg_package: 'gnupg2'
 gitea_dependencies:
   - 'git'
