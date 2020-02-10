@@ -30,6 +30,7 @@
   package:
     name: "{{ gitea_pkg_name }}"
     state: present
+  notify: 'restart gitea'
   when: "gitea_use_pkg | bool"
 
 - name: 'install Gitea from binary'

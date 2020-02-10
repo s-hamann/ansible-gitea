@@ -92,6 +92,7 @@
       owner: root
       group: root
       mode: 0755
+    notify: 'restart gitea'
 
   when: "gitea_version != _current_gitea_version"
 
