@@ -25,7 +25,7 @@ Role Variables
   Whether to prefer the distribution's package of Gitea.
   Defaults to `true` but is set to `false` if the distribution is not known provide a package.
 * `gitea_version`  
-  What version of Gite to install from <https://gitea.io/>.
+  What version of Gitea to install from <https://gitea.io/>.
   If left unset, the latest version (not including release candidates) is chosen.
   This setting is ignored when using a distribution package (cf. `gitea_use_pkg`).
 * `gitea_bind_address`  
