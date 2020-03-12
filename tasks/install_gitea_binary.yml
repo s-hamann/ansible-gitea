@@ -54,7 +54,7 @@
 
   - name: 'download gitea'
     get_url:
-      url: "{{ gitea_base_url }}/{{ gitea_version }}/{{ filename }}"
+      url: "{{ gitea_base_url | regex_replace('/*$', '') }}/{{ gitea_version }}/{{ filename }}"
       dest: "{{ _tmpdir.path }}"
     loop:
       - "{{ _filename }}"
