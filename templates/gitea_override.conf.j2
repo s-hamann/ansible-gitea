@@ -11,12 +11,13 @@ ProtectSystem=strict
 ProtectHome=true
 ReadWritePaths={{ [gitea_data_path, gitea_log_path] | map('quote') | join(' ') }}
 {% if gitea_inaccessible_paths | count %}
-InaccessiblePaths={{ gitea_inaccessible_paths | unique | map('quote') | join(' ') }}
+InaccessiblePaths={{ [gitea_inaccessible_paths] | flatten | unique | map('quote') | join(' ') }}
 {% endif %}
 PrivateTmp=true
 PrivateDevices=true
 ProtectKernelTunables=true
 ProtectKernelModules=true
+ProtectKernelLogs=true
 ProtectControlGroups=true
 LockPersonality=true
 MemoryDenyWriteExecute=true
