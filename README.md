@@ -245,7 +245,7 @@ Role Variables
     * `sync_users`  
       This option enables a periodic task that synchronizes the Gitea users with the LDAP server.
       Defaults to `false`.  
-  Note: `gitea_auth_providers` only works on Gitea 1.11.0 or newer.
+  Note: `gitea_auth_providers` only works on Gitea 1.12.0 or newer.
 * `gitea_extra_options`  
   Additional configuration options for Gitea.
   This variable is a dictionary where the keys are section names in `app.ini`.

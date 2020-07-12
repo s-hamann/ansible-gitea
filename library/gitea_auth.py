@@ -23,7 +23,7 @@ description:
       authentication sources in an instance of Gitea."
 
 requirements:
-    - Gitea >= 1.11.0
+    - Gitea >= 1.12.0
 
 notes:
     - Many options are required when adding new authentication sources. If the authentication source named as in I(name) already exists, the required options can be omitted.
@@ -371,20 +371,19 @@ def run_module():
     for line in gitea_cmd(['list'], module.params['config'])[0].splitlines():
         # Gitea may print random cruft before the actual information, i.e. the
         # header may not be in the first line. Search it.
+        line = line.decode().split()
         if not header_pos:
-            if line.strip().startswith(b'ID'):
-                col_end = 0
-                for header in ['ID', 'Name', 'Type', 'Enabled']:
-                    col_start = col_end
-                    col_end = line.decode().index(header, col_start) + len(header)
-                    header_pos[header.lower()] = (col_start, col_end)
+            if line[0] == 'ID':
+                header_pos['id'] = line.index('ID')
+                header_pos['name'] = line.index('Name')
+                header_pos['type'] = line.index('Type')
+                header_pos['enabled'] = line.index('Enabled')
             continue
         else:
-            line = line.decode()
-            a = AuthSrc(id=int(line[slice(*header_pos['id'])].strip()),
-                        name=line[slice(*header_pos['name'])].strip(),
-                        type=line[slice(*header_pos['type'])].strip(),
-                        enabled=line[slice(*header_pos['enabled'])].strip().lower() == 'true'
+            a = AuthSrc(id=int(line[header_pos['id']]),
+                        name=line[header_pos['name']],
+                        type=line[header_pos['type']],
+                        enabled=line[header_pos['enabled']].lower() == 'true'
                         )
             auth_providers.append(a)
 
