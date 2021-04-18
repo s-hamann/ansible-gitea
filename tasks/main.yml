@@ -191,7 +191,7 @@
     warn: false # su is needed, otherwise Ansible might require a password to become the gitea user
 
 - name: 'create initial local user accounts'
-  command: "su {{ gitea_user }} -c 'PATH=\"{{ ansible_facts['env']['PATH'] }}:/usr/local/bin\" gitea -c /etc/gitea/app.ini admin create-user --username {{ user.name | quote }} --password {{ user.password | quote }} --email {{ user.email | quote }} {{ user.admin | default(false) | bool | ternary('--admin', '') }}'"
+  command: "su {{ gitea_user }} -c 'PATH=\"{{ ansible_facts['env']['PATH'] }}:/usr/local/bin\" gitea -c /etc/gitea/app.ini admin user create --username {{ user.name | quote }} --password {{ user.password | quote }} --email {{ user.email | quote }} {{ user.admin | default(false) | bool | ternary('--admin', '') }}'"
   args:
     chdir: "{{ gitea_data_path }}"
     warn: false # su is needed, otherwise Ansible might require a password to become the gitea user

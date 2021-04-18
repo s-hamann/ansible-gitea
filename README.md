@@ -154,7 +154,8 @@ Role Variables
       Mandatory.
     * `admin`  
       Whether to assign administrative privileges to the user.
-      Defaults to `false`.
+      Defaults to `false`.  
+  Note: `gitea_users` only works on Gitea 1.14.0 or newer.
 * `gitea_auth_providers`  
   A list of [external authentication](https://docs.gitea.io/en-us/authentication/) sources to set up within Gitea.
   Each list item is in turn a dictionary with the following keys:
