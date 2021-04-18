@@ -273,7 +273,7 @@ Alternatively, SQLite can be used, which does not require any further setup.
 Example Configuration
 ---------------------
 
-The following is short example for some of the configuration options this role provides:
+The following is a short example for some of the configuration options this role provides:
 
 ```yaml
 gitea_bind_address: '0.0.0.0'
