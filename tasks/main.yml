@@ -96,7 +96,7 @@
     state: directory
     owner: "{{ directory.owner | default(gitea_user) }}"
     group: "{{ directory.group | default(gitea_group) }}"
-    mode: "{{ directory.mode | default(0750) }}"
+    mode: "{{ directory.mode | default('0750') }}"
   loop:
     - path: '/etc/gitea'
       owner: root
