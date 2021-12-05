@@ -1,12 +1,13 @@
 {# vim: filetype=systemd.jinja2 #}
 [Service]
+# Apply principle of least privilege
+NoNewPrivileges=true
+CapabilityBoundingSet=
 {% if gitea_port | int < 1024 %}
 # Allow binding to low ports
 CapabilityBoundingSet=CAP_NET_BIND_SERVICE
 AmbientCapabilities=CAP_NET_BIND_SERVICE
 {% endif %}
-# Apply principle of least privilege
-NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
 ReadWritePaths={{ [gitea_data_path, gitea_log_path] | map('quote') | join(' ') }}
@@ -15,15 +16,22 @@ InaccessiblePaths={{ [gitea_inaccessible_paths] | flatten | unique | map('quote'
 {% endif %}
 PrivateTmp=true
 PrivateDevices=true
+{% if [gitea_extra_groups | default([])] | flatten | count == 0 %}
+PrivateUsers=true
+{% endif %}
 ProtectKernelTunables=true
 ProtectKernelModules=true
 ProtectKernelLogs=true
 ProtectControlGroups=true
+ProtectProc=invisible
+ProtectClock=true
+ProtectHostname=true
 LockPersonality=true
 MemoryDenyWriteExecute=true
 RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
 RestrictNamespaces=true
 RestrictRealtime=true
+RestrictSUIDSGID=true
 SystemCallFilter=@system-service @basic-io @io-event @network-io madvise
 SystemCallFilter=~@aio @chown @keyring @memlock @privileged @resources @setuid
 SystemCallArchitectures=native
