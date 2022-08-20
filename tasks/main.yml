@@ -90,24 +90,6 @@
     state: present
   when: "ansible_facts['service_mgr'] != 'systemd' and gitea_port | int < 1024"
 
-- name: 'create required directories'
-  file:
-    path: "{{ directory.path }}"
-    state: directory
-    owner: "{{ directory.owner | default(gitea_user) }}"
-    group: "{{ directory.group | default(gitea_group) }}"
-    mode: "{{ directory.mode | default('0750') }}"
-  loop:
-    - path: '/etc/gitea'
-      owner: root
-    - path: "{{ gitea_data_path }}"
-    - path: "{{ gitea_custom_path }}"
-      owner: root
-    - path: "{{ gitea_log_path }}"
-  loop_control:
-    loop_var: directory
-    label: "{{ directory.path }}"
-
 - name: 'check if Gitea is already configured'
   stat:
     path: '/etc/gitea/app.ini'
@@ -127,6 +109,29 @@
     - 'LFS_JWT_SECRET'
   loop_control:
     loop_var: secret
+
+- name: 'combine default and custom options'
+  set_fact:
+    _gitea_options: "{{ gitea_default_options | combine(gitea_extra_options, recursive=True) }}"
+
+- name: 'create required directories'
+  file:
+    path: "{{ directory.path }}"
+    state: directory
+    owner: "{{ directory.owner | default(gitea_user) }}"
+    group: "{{ directory.group | default(gitea_group) }}"
+    mode: "{{ directory.mode | default('0750') }}"
+  loop:
+    - path: '/etc/gitea'
+      owner: root
+    - path: "{{ gitea_data_path }}"
+    - path: "{{ _gitea_options['git']['HOME_PATH'] }}"
+    - path: "{{ gitea_custom_path }}"
+      owner: root
+    - path: "{{ gitea_log_path }}"
+  loop_control:
+    loop_var: directory
+    label: "{{ directory.path }}"
 
 - name: 'configure Gitea'
   template:
@@ -152,7 +157,7 @@
   command: "su {{ gitea_user }} -c 'gpg --batch --generate-key'"
   args:
     warn: false # su is needed, otherwise Ansible might require a password to become the gitea user
-    creates: "{{ gitea_data_path }}/.gnupg/private-keys-v1.d/"
+    creates: "{{ _gitea_options['git']['HOME_PATH'] }}/.gnupg/private-keys-v1.d/"
     stdin: |
       %no-protection
       Key-Type: {{ gitea_signing_key_type }}
@@ -166,7 +171,7 @@
 
 - name: 'configure git command line client'
   ini_file:
-    path: "{{ gitea_data_path }}/.gitconfig"
+    path: "{{ _gitea_options['git']['HOME_PATH'] }}/.gitconfig"
     section: "{{ item.section }}"
     option: "{{ item.option }}"
     value: "{{ item.value }}"

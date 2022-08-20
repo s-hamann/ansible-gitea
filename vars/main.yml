@@ -9,6 +9,8 @@ gitea_default_options:
   repository:
     ROOT: "{{ gitea_data_path }}/repos"
     SCRIPT_TYPE: "{{ _bin_bash.stat.exists | ternary('bash', 'sh') }}"
+  git:
+    HOME_PATH: "{{ _gitea_options['server']['APP_DATA_PATH'] | default(gitea_data_path) ~ '/data/' }}/home"
   repository.signing:
     SIGNING_KEY: "{{ gitea_enable_signing | bool | ternary('default', 'none') }}"
   server:
