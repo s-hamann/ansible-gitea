@@ -60,18 +60,12 @@ gitea_default_options:
     # Default logger
     MODE: 'file'
     LEVEL: "{{ gitea_loglevel }}"
-    # Macaron logger
-    REDIRECT_MACARON_LOG: true
-    MACARON: 'file'
     # Router logger
     ROUTER: 'file'
     ROUTER_LOG_LEVEL: "{{ gitea_loglevel }}"
     # Access logger
     ENABLE_ACCESS_LOG: "{{ gitea_loglevel | lower in ['trace', 'debug'] }}"
     ACCESS: 'file'
-    # XORM logger
-    ENABLE_XORM_LOG: "{{ gitea_loglevel | lower in ['trace', 'debug', 'info'] }}"
-    XORM: 'file'
   oauth2:
     JWT_SECRET: '`{{ _JWT_SECRET }}`'
   other:
