@@ -9,7 +9,7 @@ It is also possible to configure external authentication sources.
 Requirements
 ------------
 
-Gitea versions older than 1.17.0 are not (fully) supported.
+Gitea versions older than 1.18.0 are not (fully) supported.
 Depending on the exact configuration, they may or may not work.
 
 If TLS encryption (i.e. HTTPS) is desired, the target system needs to have a suitable X.509 certificate.

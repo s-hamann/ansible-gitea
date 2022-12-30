@@ -46,12 +46,13 @@ gitea_default_options:
     ENABLE_NOTIFY_MAIL: "{{ gitea_enable_mailer }}"
   mailer:
     ENABLED: "{{ gitea_enable_mailer }}"
-    HOST: "{{ gitea_mailer_host | default(omit) }}"
+    SMTP_ADDR: "{% if ':' in gitea_mailer_host | default('') %}{{ gitea_mailer_host.split(':')[0] }}{% else %}{{ gitea_mailer_host | default(omit) }}{% endif %}"
+    SMTP_PORT: "{% if ':' in gitea_mailer_host | default('') %}{{ gitea_mailer_host.split(':')[1] }}{% else %}{{ omit }}{% endif %}"
     FROM: "{{ gitea_mailer_from | default(omit)  }}"
     USER: "{{ gitea_mailer_user | default(omit) }}"
     PASSWD: "{{ '`' ~ gitea_mailer_password ~ '`' if gitea_mailer_password is defined else omit }}"
     SEND_AS_PLAIN_TEXT: true
-    MAILER_TYPE: "{{ (gitea_mailer_host is defined) | ternary('smtp', 'sendmail') }}"
+    PROTOCOL: "{% if gitea_mailer_host is defined %}{{ gitea_mailer_host.startswith('/') | ternary('smtp+unix', 'smtp') }}{% else %}sendmail{% endif %}"
   session:
     COOKIE_SECURE: "{{ gitea_tls_cert is defined }}"
     COOKIE_NAME: 'gitea_session'
