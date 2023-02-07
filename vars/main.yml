@@ -27,11 +27,11 @@ gitea_default_options:
   database:
     DB_TYPE: "{{ gitea_database_type | mandatory }}"
     HOST: "{{ gitea_database_host | default(omit) }}"
-    NAME: "{{ (gitea_database_type != 'sqlite3') | ternary(gitea_database_name, omit) }}"
+    NAME: "{{ (gitea_database_type != 'sqlite3') | ternary(gitea_database_name | default(omit), omit) }}"
     USER: "{{ gitea_database_user | default(omit) }}"
     PASSWD: "{{ '`' ~ gitea_database_password ~ '`' if gitea_database_password is defined else omit }}"
     CHARSET: 'utf8mb4'
-    PATH: "{{ (gitea_database_type == 'sqlite3') | ternary(gitea_database_name, omit) }}"
+    PATH: "{{ (gitea_database_type == 'sqlite3') | ternary(gitea_database_name | default(omit), omit) }}"
     LOG_SQL: "{{ gitea_loglevel | lower in ['trace', 'debug'] }}"
   indexer:
     REPO_INDEXER_ENABLED: "{{ gitea_enable_indexer | bool }}"
