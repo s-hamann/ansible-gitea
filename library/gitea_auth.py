@@ -426,11 +426,12 @@ def run_module():
 
     elif module.params['state'] == 'present':
         # Add/update an authentication source.
-        if module.params['type'] == 'outh2':
+        if module.params['type'] == 'oauth':
             if id is None:
                 cmd = ['add-oauth']
             else:
                 cmd = ['update-oauth', '--id', str(id)]
+            cmd += ['--name', module.params['name']]
             if module.params['provider']:
                 cmd += ['--provider', module.params['provider']]
             if module.params['client_id']:
@@ -438,17 +439,17 @@ def run_module():
             if module.params['client_secret']:
                 cmd += ['--secret', module.params['client_secret']]
             if module.params['auto_discover_url']:
-                cmd += ['auto-discover-url', module.param['auto_discover_url']]
+                cmd += ['--auto-discover-url', module.params['auto_discover_url']]
             if module.params['use_custom_urls']:
-                cmd += ['use-custom-urls', module.param['use_custom_urls']]
+                cmd += ['--use-custom-urls', str(module.params['use_custom_urls'])]
             if module.params['custom_auth_url']:
-                cmd += ['custom-auth-url', module.param['custom_auth_url']]
+                cmd += ['--custom-auth-url', module.params['custom_auth_url']]
             if module.params['custom_token_url']:
-                cmd += ['custom-token-url', module.param['custom_token_url']]
+                cmd += ['--custom-token-url', module.params['custom_token_url']]
             if module.params['custom_profile_url']:
-                cmd += ['custom-profile-url', module.param['custom_profile_url']]
+                cmd += ['--custom-profile-url', module.params['custom_profile_url']]
             if module.params['custom_email_url']:
-                cmd += ['custom-email-url', module.param['custom_email_url']]
+                cmd += ['--custom-email-url', module.params['custom_email_url']]
 
         elif module.params['type'] == 'ldap' or module.params['type'] == 'ldap-simple':
             if module.params['type'] == 'ldap':
@@ -511,20 +512,20 @@ def run_module():
             if module.params['sshkey_attribute']:
                 cmd += ['--public-ssh-key-attribute', module.params['sshkey_attribute']]
 
-            if not module.check_mode:
-                retval = gitea_cmd(cmd, module.params['config'])
-                if retval.returncode > 0:
-                    if id is None:
-                        verb = 'add'
-                    else:
-                        verb = 'update'
-                    msg = ('Could not {verb} authentication source {name}'.
-                           format(verb=verb, name=module.params['name']))
-                    module.fail_json(msg=msg, stdout=retval.stdout, rc=retval.returncode, **result)
+        if not module.check_mode:
+            retval = gitea_cmd(cmd, module.params['config'])
+            if retval.returncode > 0:
+                if id is None:
+                    verb = 'add'
+                else:
+                    verb = 'update'
+                msg = ('Could not {verb} authentication source {name}'.
+                       format(verb=verb, name=module.params['name']))
+                module.fail_json(msg=msg, stdout=retval.stdout, rc=retval.returncode, **result)
 
-            # We can not know if anything was changed, since we can not get the
-            # full configuration of an authentication source out of Gitea.
-            result['changed'] = True
+        # We can not know if anything was changed, since we can not get the
+        # full configuration of an authentication source out of Gitea.
+        result['changed'] = True
 
     module.exit_json(**result)
 
