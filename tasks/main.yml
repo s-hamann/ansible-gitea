@@ -232,6 +232,7 @@
     client_secret: "{{ provider.client_secret | default(omit) }}"
     auto_discover_url: "{{ provider.auto_discover_url | default(omit) }}"
     use_custom_urls: "{{ provider.use_custom_urls | default(omit) }}"
+    custom_tenant_id: "{{ provider.custom_tenant_id | default(omit) }}"
     custom_auth_url: "{{ provider.custom_auth_url | default(omit) }}"
     custom_email_url: "{{ provider.custom_email_url | default(omit) }}"
     custom_profile_url: "{{ provider.custom_profile_url | default(omit) }}"

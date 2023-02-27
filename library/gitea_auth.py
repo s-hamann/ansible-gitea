@@ -78,6 +78,12 @@ options:
         type: str
         required: False
         default: /etc/gitea/app.ini
+    custom_tenant_id:
+        description:
+            - Use custom Tenant ID for OAuth endpoints
+            - Only used if I(type) is C(oauth) and I(state) is C(present).
+        type: str
+        required: False
     custom_auth_url:
         description:
             - Use a custom Authorization URL (option for GitLab/GitHub).
@@ -332,6 +338,7 @@ def run_module():
         client_id=dict(type='str'),
         client_secret=dict(type='str', no_log=True),
         config=dict(type='str', default='/etc/gitea/app.ini'),
+        custom_tenant_id=dict(type='str'),
         custom_auth_url=dict(type='str'),
         custom_email_url=dict(type='str'),
         custom_profile_url=dict(type='str'),
@@ -442,6 +449,8 @@ def run_module():
                 cmd += ['--auto-discover-url', module.params['auto_discover_url']]
             if module.params['use_custom_urls']:
                 cmd += ['--use-custom-urls', str(module.params['use_custom_urls'])]
+            if module.params['custom_tenant_id']:
+                cmd += ['--custom-tenant-id', module.params['custom_tenant_id']]
             if module.params['custom_auth_url']:
                 cmd += ['--custom-auth-url', module.params['custom_auth_url']]
             if module.params['custom_token_url']:

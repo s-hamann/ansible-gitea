@@ -187,6 +187,10 @@ Role Variables
     * `use_custom_urls`  
       Whether to use custom URLs if `provider` is `github`, `gitlab` or `gitea`.
       Defaults to `false`.
+    * `custom_tenant_id`  
+      A custom Tenant ID for OAuth2 endpoint (cf. `use_custom_urls`).
+      Optional.
+      Only works on Gitea 1.19.0 an newer.
     * `custom_auth_url`  
       A custom Authorization URL (cf. `use_custom_urls`).
       Optional.
