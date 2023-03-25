@@ -156,7 +156,6 @@
 - name: 'create server-side commit signing key'
   command: "su {{ gitea_user }} -c 'gpg --batch --generate-key'"
   args:
-    warn: false # su is needed, otherwise Ansible might require a password to become the gitea user
     creates: "{{ _gitea_options['git']['HOME_PATH'] }}/.gnupg/private-keys-v1.d/"
     stdin: |
       %no-protection
@@ -193,13 +192,11 @@
   command: "su {{ gitea_user }} -c 'PATH=\"{{ ansible_facts['env']['PATH'] }}:/usr/local/bin\" gitea -c /etc/gitea/app.ini migrate'"
   args:
     chdir: "{{ gitea_data_path }}"
-    warn: false # su is needed, otherwise Ansible might require a password to become the gitea user
 
 - name: 'create initial local user accounts'
   command: "su {{ gitea_user }} -c 'PATH=\"{{ ansible_facts['env']['PATH'] }}:/usr/local/bin\" gitea -c /etc/gitea/app.ini admin user create --username {{ user.name | quote }} --password {{ user.password | quote }} --email {{ user.email | quote }} {{ user.admin | default(false) | bool | ternary('--admin', '') }}'"
   args:
     chdir: "{{ gitea_data_path }}"
-    warn: false # su is needed, otherwise Ansible might require a password to become the gitea user
   register: _create_user
   failed_when: "_create_user.rc > 0 and 'user already exists' not in _create_user.stdout"
   changed_when: "'New user ''' ~ user.name ~ ''' has been successfully created' in _create_user.stdout"
