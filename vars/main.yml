@@ -60,12 +60,20 @@ gitea_default_options:
     # Default logger
     MODE: 'file'
     LEVEL: "{{ gitea_loglevel }}"
-    # Router logger
-    ROUTER: 'file'
-    ROUTER_LOG_LEVEL: "{{ gitea_loglevel }}"
-    # Access logger
-    ENABLE_ACCESS_LOG: "{{ gitea_loglevel | lower in ['trace', 'debug'] }}"
-    ACCESS: 'file'
+    logger.router.MODE: 'router-file'
+    logger.access.MODE: 'access-file'
+  log.access-file:
+    MODE: 'file'
+    LEVEL: "{{ gitea_loglevel }}"
+    FILE_NAME: 'access.log'
+  log.router-file:
+    MODE: 'file'
+    LEVEL: "{{ gitea_loglevel }}"
+    FILE_NAME: 'router.log'
+  log.xorm-file:
+    MODE: 'file'
+    LEVEL: "{{ gitea_loglevel }}"
+    FILE_NAME: 'xorm.log'
   oauth2:
     JWT_SECRET: '`{{ _JWT_SECRET }}`'
   other:
