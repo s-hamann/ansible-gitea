@@ -125,7 +125,7 @@
     - path: '/etc/gitea'
       owner: root
     - path: "{{ gitea_data_path }}"
-    - path: "{{ _gitea_options['git']['HOME_PATH'] }}"
+    - path: "{{ _gitea_options['git']['HOME_PATH'] | default(gitea_data_path ~ '/data/home') }}"
     - path: "{{ gitea_custom_path }}"
       owner: root
     - path: "{{ gitea_log_path }}"
@@ -156,7 +156,7 @@
 - name: 'create server-side commit signing key'
   command: "su {{ gitea_user }} -c 'gpg --batch --generate-key'"
   args:
-    creates: "{{ _gitea_options['git']['HOME_PATH'] }}/.gnupg/private-keys-v1.d/"
+    creates: "{{ _gitea_options['git']['HOME_PATH'] | default(gitea_data_path ~ '/data/home') }}/.gnupg/private-keys-v1.d/"
     stdin: |
       %no-protection
       Key-Type: {{ gitea_signing_key_type }}
@@ -170,7 +170,7 @@
 
 - name: 'configure git command line client'
   ini_file:
-    path: "{{ _gitea_options['git']['HOME_PATH'] }}/.gitconfig"
+    path: "{{ _gitea_options['git']['HOME_PATH'] | default(gitea_data_path ~ '/data/home') }}/.gitconfig"
     section: "{{ item.section }}"
     option: "{{ item.option }}"
     value: "{{ item.value }}"
