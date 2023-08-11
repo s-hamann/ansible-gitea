@@ -23,7 +23,7 @@
 
   - name: 'determine latest version of Gitea'
     set_fact:
-      gitea_version: "{{ _gitea_downloads.content | regex_findall('(?<=/gitea/)[0-9]+\\.[0-9]+\\.[0-9]+') | sort_versions | last }}"
+      gitea_version: "{{ _gitea_downloads.content | regex_findall('(?<=/gitea/)[0-9]+\\.[0-9]+\\.[0-9]+') | community.general.version_sort | last }}"
 
   when: "gitea_version is not defined"
 

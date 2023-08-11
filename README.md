@@ -21,6 +21,8 @@ This role does not handle database configuration.
 Gitea's (optional) email system requires a SMTP server or a working `sendmail` program.
 This is not set up by this role either.
 
+This role requires the `community.general` Ansible collection.
+
 Role Variables
 --------------
 
