@@ -523,6 +523,8 @@ def run_module():
 
         if not module.check_mode:
             retval = gitea_cmd(cmd, module.params['config'])
+            result['stdout'] = retval.stdout
+            result['stderr'] = retval.stderr
             if retval.returncode > 0:
                 if id is None:
                     verb = 'add'
@@ -530,7 +532,7 @@ def run_module():
                     verb = 'update'
                 msg = ('Could not {verb} authentication source {name}'.
                        format(verb=verb, name=module.params['name']))
-                module.fail_json(msg=msg, stdout=retval.stdout, rc=retval.returncode, **result)
+                module.fail_json(msg=msg, rc=retval.returncode, **result)
 
         # We can not know if anything was changed, since we can not get the
         # full configuration of an authentication source out of Gitea.
