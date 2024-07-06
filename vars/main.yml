@@ -38,7 +38,6 @@ gitea_default_options:
     INSTALL_LOCK: true
     SECRET_KEY: '`{{ _SECRET_KEY }}`'
     INTERNAL_TOKEN: '`{{ _INTERNAL_TOKEN }}`'
-    COOKIE_USERNAME: 'gitea_user'
     COOKIE_REMEMBER_NAME: 'gitea_persistent'
     PASSWORD_HASH_ALGO: 'argon2'
   service:
