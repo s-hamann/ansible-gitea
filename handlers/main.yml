@@ -1,19 +1,20 @@
 ---
-- name: 'reload service files'
-  systemd:
+- name: 'Reload service files'
+  ansible.builtin.systemd:
     daemon_reload: true
   listen: gitea_reload_service_files
   when: "ansible_facts['service_mgr'] == 'systemd'"
 
-- name: 'remove temporary directory'
-  file:
+- name: 'Remove temporary directory'
+  ansible.builtin.file:
     path: "{{ _tmpdir.path }}"
     state: absent
   diff: false
-  listen: 'gitea_remove_tmpdir'
+  listen: gitea_remove_tmpdir
 
-- name: 'restart gitea'
-  service:
-    name: 'gitea'
+- name: 'Restart Gitea'
+  ansible.builtin.service:
+    name: gitea
     enabled: true
-    state: "{{ ansible_facts['is_chroot'] | ternary(omit, 'restarted') }}"
+    state: "{{ ansible_facts['is_chroot'] | ansible.builtin.ternary(omit, 'restarted') }}"
+  listen: gitea_restart

@@ -12,11 +12,11 @@ ProtectSystem=strict
 ProtectHome=true
 ReadWritePaths={{ [gitea_data_path, gitea_log_path] | map('quote') | join(' ') }}
 {% if gitea_inaccessible_paths | count %}
-InaccessiblePaths={{ [gitea_inaccessible_paths] | flatten | unique | map('quote') | join(' ') }}
+InaccessiblePaths={{ [gitea_inaccessible_paths] | ansible.builtin.flatten | ansible.builtin.unique | map('ansible.builtin.quote') | join(' ') }}
 {% endif %}
 PrivateTmp=true
 PrivateDevices=true
-{% if [gitea_extra_groups | default([])] | flatten | count == 0 %}
+{% if [gitea_extra_groups | default([])] | ansible.builtin.flatten | count == 0 %}
 PrivateUsers=true
 {% endif %}
 ProtectKernelTunables=true

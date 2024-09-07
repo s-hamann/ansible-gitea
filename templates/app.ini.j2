@@ -1,5 +1,5 @@
 {# vim: filetype=ini.jinja2 #}
-{{ ansible_managed | comment }}
+{{ ansible_managed | ansible.builtin.comment }}
 
 {% for key, options in _gitea_options.items() %}
 [{{ key }}]

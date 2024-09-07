@@ -1,19 +1,19 @@
 ---
 gitea_arch: "{{ 'amd64' if ansible_facts['architecture'] == 'x86_64' else ansible_facts['architecture'] }}"
 gitea_base_url: 'https://dl.gitea.io/gitea/'
-gitea_pgp_fingerprint: '7C9E68152594688862D62AF62D9AE806EC1592E2'
+gitea_pgp_fingerprint: 7C9E68152594688862D62AF62D9AE806EC1592E2
 gitea_default_options:
   DEFAULT:
     WORK_PATH: "{{ gitea_data_path }}"
     RUN_USER: "{{ gitea_user }}"
-    RUN_MODE: 'prod'
+    RUN_MODE: prod
   repository:
     ROOT: "{{ gitea_data_path }}/repos"
-    SCRIPT_TYPE: "{{ _bin_bash.stat.exists | ternary('bash', 'sh') }}"
+    SCRIPT_TYPE: "{{ _bin_bash.stat.exists | ansible.builtin.ternary('bash', 'sh') }}"
   repository.signing:
-    SIGNING_KEY: "{{ gitea_enable_signing | bool | ternary('default', 'none') }}"
+    SIGNING_KEY: "{{ gitea_enable_signing | bool | ansible.builtin.ternary('default', 'none') }}"
   server:
-    PROTOCOL: "{{ (gitea_tls_cert is defined) | ternary('https', 'http') }}"
+    PROTOCOL: "{{ (gitea_tls_cert is defined) | ansible.builtin.ternary('https', 'http') }}"
     DOMAIN: "{{ ansible_facts['fqdn'] }}"
     HTTP_ADDR: "{{ gitea_bind_address }}"
     HTTP_PORT: "{{ gitea_port }}"
@@ -24,13 +24,13 @@ gitea_default_options:
     LFS_START_SERVER: "{{ gitea_enable_lfs }}"
     LFS_JWT_SECRET: '`{{ _LFS_JWT_SECRET }}`'
   database:
-    DB_TYPE: "{{ gitea_database_type | mandatory }}"
+    DB_TYPE: "{{ gitea_database_type | ansible.builtin.mandatory }}"
     HOST: "{{ gitea_database_host | default(omit) }}"
-    NAME: "{{ (gitea_database_type != 'sqlite3') | ternary(gitea_database_name | default(omit), omit) }}"
+    NAME: "{{ (gitea_database_type != 'sqlite3') | ansible.builtin.ternary(gitea_database_name | default(omit), omit) }}"
     USER: "{{ gitea_database_user | default(omit) }}"
     PASSWD: "{{ '`' ~ gitea_database_password ~ '`' if gitea_database_password is defined else omit }}"
-    CHARSET: 'utf8mb4'
-    PATH: "{{ (gitea_database_type == 'sqlite3') | ternary(gitea_database_name | default(omit), omit) }}"
+    CHARSET: utf8mb4
+    PATH: "{{ (gitea_database_type == 'sqlite3') | ansible.builtin.ternary(gitea_database_name | default(omit), omit) }}"
     LOG_SQL: "{{ gitea_loglevel | lower in ['trace', 'debug'] }}"
   indexer:
     REPO_INDEXER_ENABLED: "{{ gitea_enable_indexer | bool }}"
@@ -38,41 +38,41 @@ gitea_default_options:
     INSTALL_LOCK: true
     SECRET_KEY: '`{{ _SECRET_KEY }}`'
     INTERNAL_TOKEN: '`{{ _INTERNAL_TOKEN }}`'
-    COOKIE_REMEMBER_NAME: 'gitea_persistent'
-    PASSWORD_HASH_ALGO: 'argon2'
+    COOKIE_REMEMBER_NAME: gitea_persistent
+    PASSWORD_HASH_ALGO: argon2
   service:
     ENABLE_NOTIFY_MAIL: "{{ gitea_enable_mailer }}"
   mailer:
     ENABLED: "{{ gitea_enable_mailer }}"
     SMTP_ADDR: "{% if ':' in gitea_mailer_host | default('') %}{{ gitea_mailer_host.split(':')[0] }}{% else %}{{ gitea_mailer_host | default(omit) }}{% endif %}"
     SMTP_PORT: "{% if ':' in gitea_mailer_host | default('') %}{{ gitea_mailer_host.split(':')[1] }}{% else %}{{ omit }}{% endif %}"
-    FROM: "{{ gitea_mailer_from | default(omit)  }}"
+    FROM: "{{ gitea_mailer_from | default(omit) }}"
     USER: "{{ gitea_mailer_user | default(omit) }}"
     PASSWD: "{{ '`' ~ gitea_mailer_password ~ '`' if gitea_mailer_password is defined else omit }}"
     SEND_AS_PLAIN_TEXT: true
-    PROTOCOL: "{% if gitea_mailer_host is defined %}{{ gitea_mailer_host.startswith('/') | ternary('smtp+unix', 'smtp') }}{% else %}sendmail{% endif %}"
+    PROTOCOL: "{% if gitea_mailer_host is defined %}{{ gitea_mailer_host.startswith('/') | ansible.builtin.ternary('smtp+unix', 'smtp') }}{% else %}sendmail{% endif %}"
   session:
     COOKIE_SECURE: "{{ gitea_tls_cert is defined }}"
-    COOKIE_NAME: 'gitea_session'
+    COOKIE_NAME: gitea_session
   log:
     ROOT_PATH: "{{ gitea_log_path }}"
     # Default logger
-    MODE: 'file'
+    MODE: file
     LEVEL: "{{ gitea_loglevel }}"
-    logger.router.MODE: 'router-file'
-    logger.access.MODE: 'access-file'
+    logger.router.MODE: router-file
+    logger.access.MODE: access-file
   log.access-file:
-    MODE: 'file'
+    MODE: file
     LEVEL: "{{ gitea_loglevel }}"
-    FILE_NAME: 'access.log'
+    FILE_NAME: access.log
   log.router-file:
-    MODE: 'file'
+    MODE: file
     LEVEL: "{{ gitea_loglevel }}"
-    FILE_NAME: 'router.log'
+    FILE_NAME: router.log
   log.xorm-file:
-    MODE: 'file'
+    MODE: file
     LEVEL: "{{ gitea_loglevel }}"
-    FILE_NAME: 'xorm.log'
+    FILE_NAME: xorm.log
   oauth2:
     JWT_SECRET: '`{{ _JWT_SECRET }}`'
   other:

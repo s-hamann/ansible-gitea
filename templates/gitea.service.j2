@@ -29,7 +29,7 @@ User={{ gitea_user }}
 Group={{ gitea_group }}
 
 ExecStart=/usr/local/bin/gitea web --config /etc/gitea/app.ini
-WorkingDirectory={{ gitea_data_path | quote }}
+WorkingDirectory={{ gitea_data_path | ansible.builtin.quote }}
 RuntimeDirectory=gitea
 Environment="GITEA_WORK_DIR={{ gitea_data_path }}" "GITEA_CUSTOM={{ gitea_custom_path }}"
 

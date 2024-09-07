@@ -1,3 +1,3 @@
 ---
 gitea_has_pkg: true
-gitea_gnupg_package: 'gnupg'
+gitea_gnupg_package: gnupg

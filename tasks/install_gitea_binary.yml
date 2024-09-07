@@ -9,107 +9,108 @@
 # * creating the necessary system user account
 # * installing a systemd service file/OpenRC init script
 
-- name: 'install dependencies'
-  package:
+- name: 'Install dependencies'
+  ansible.builtin.package:
     name: "{{ gitea_dependencies }}"
     state: present
 
-- block:
-  - name: 'get available versions of Gitea'
-    uri:
-      url: "{{ gitea_base_url }}"
-      return_content: true
-    register: _gitea_downloads
-    check_mode: false
-
-  - name: 'determine latest version of Gitea'
-    set_fact:
-      gitea_version: "{{ _gitea_downloads.content | regex_findall('(?<=/gitea/)[0-9]+\\.[0-9]+\\.[0-9]+') | community.general.version_sort | last }}"
-
+- name: 'Determine Gitea version to install'
   when: "gitea_version is not defined"
+  block:
 
-- name: 'get currently installed version of Gitea'
-  command: '/usr/local/bin/gitea --version'
+    - name: 'Get available versions of Gitea'
+      ansible.builtin.uri:
+        url: "{{ gitea_base_url }}"
+        return_content: true
+      register: _gitea_downloads
+      check_mode: false
+
+    - name: 'Determine latest version of Gitea'
+      ansible.builtin.set_fact:
+        gitea_version: "{{ _gitea_downloads.content | regex_findall('(?<=/gitea/)[0-9]+\\.[0-9]+\\.[0-9]+') | community.general.version_sort | last }}"
+
+- name: 'Get currently installed version of Gitea'
+  ansible.builtin.command: '/usr/local/bin/gitea --version'
   check_mode: false
   changed_when: false
   ignore_errors: true
   register: _gitea_version
 
-- name: 'determine version number'
-  set_fact:
-    _current_gitea_version: "{{ _gitea_version.stdout | default('') | regex_search('(?<=Gitea version )[0-9.]+(-rc[0-9]+)?(?= )') }}"
+- name: 'Determine version number'
+  ansible.builtin.set_fact:
+    _current_gitea_version: "{{ _gitea_version.stdout | default('') | ansible.builtin.regex_search('(?<=Gitea version )[0-9.]+(-rc[0-9]+)?(?= )') }}"
 
-- name: "download and install Gitea {{ gitea_version }}"
+- name: "Download and install Gitea {{ gitea_version }}"
+  when: "gitea_version != _current_gitea_version"
   block:
 
-  - name: 'create temporary directory'
-    tempfile:
-      state: directory
-    diff: false
-    register: _tmpdir
-    notify: 'gitea_remove_tmpdir'
+    - name: 'Create temporary directory'
+      ansible.builtin.tempfile:
+        state: directory
+      diff: false
+      register: _tmpdir
+      notify: gitea_remove_tmpdir
 
-  - name: 'determine file name'
-    set_fact:
-      _filename: "gitea-{{ gitea_version }}-linux-{{ gitea_arch }}"
+    - name: 'Determine file name'
+      ansible.builtin.set_fact:
+        _filename: "gitea-{{ gitea_version }}-linux-{{ gitea_arch }}"
 
-  - name: 'download gitea'
-    get_url:
-      url: "{{ gitea_base_url | regex_replace('/*$', '') }}/{{ gitea_version }}/{{ filename }}"
-      dest: "{{ _tmpdir.path }}"
-    loop:
-      - "{{ _filename }}"
-      - "{{ _filename }}.asc"
-    loop_control:
-      loop_var: filename
-    when: "_tmpdir is not skipped"
+    - name: 'Download Gitea'
+      ansible.builtin.get_url:
+        url: "{{ gitea_base_url | ansible.builtin.regex_replace('/*$', '') }}/{{ gitea_version }}/{{ filename }}"
+        dest: "{{ _tmpdir.path }}"
+        mode: '0755'
+      loop:
+        - "{{ _filename }}"
+        - "{{ _filename }}.asc"
+      loop_control:
+        loop_var: filename
+      when: "_tmpdir is not skipped"
 
-  - name: 'create temporary GnuPG directory'
-    file:
-      path: "{{ _tmpdir.path }}/.gnupg"
-      state: directory
-      owner: root
-      group: root
-      mode: 0700
-    diff: false
-    when: "_tmpdir is not skipped"
+    - name: 'Create temporary GnuPG directory'
+      ansible.builtin.file:
+        path: "{{ _tmpdir.path }}/.gnupg"
+        state: directory
+        owner: root
+        group: root
+        mode: '0700'
+      diff: false
+      when: "_tmpdir is not skipped"
 
-  - name: 'get the PGP keys'
-    command: "gpg --keyserver hkps://keys.openpgp.org --no-default-keyring --keyring trustedkeys.kbx --recv-key {{ gitea_pgp_fingerprint | quote }}"
-    environment:
-      GNUPGHOME: "{{ _tmpdir.path }}/.gnupg"
-    register: '_gpg_recv_key'
-    changed_when: "_gpg_recv_key is not failed and 'imported:' in _gpg_recv_key.stderr"
-    when: "_tmpdir is not skipped"
+    - name: 'Get the PGP keys'
+      ansible.builtin.command: "gpg --keyserver hkps://keys.openpgp.org --no-default-keyring --keyring trustedkeys.kbx --recv-key {{ gitea_pgp_fingerprint | ansible.builtin.quote }}"
+      environment:
+        GNUPGHOME: "{{ _tmpdir.path }}/.gnupg"
+      register: _gpg_recv_key
+      changed_when: "_gpg_recv_key is not failed and 'imported:' in _gpg_recv_key.stderr"
+      when: "_tmpdir is not skipped"
 
-  - name: 'verify signature'
-    command: "gpgv '{{ _tmpdir.path }}/{{ _filename }}.asc' '{{ _tmpdir.path }}/{{ _filename }}'"
-    environment:
-      GNUPGHOME: "{{ _tmpdir.path }}/.gnupg"
-    changed_when: false
-    when: "_tmpdir is not skipped"
+    - name: 'Verify signature'
+      ansible.builtin.command: "gpgv '{{ _tmpdir.path }}/{{ _filename }}.asc' '{{ _tmpdir.path }}/{{ _filename }}'"
+      environment:
+        GNUPGHOME: "{{ _tmpdir.path }}/.gnupg"
+      changed_when: false
+      when: "_tmpdir is not skipped"
 
-  - name: 'install gitea'
-    copy:
-      dest: '/usr/local/bin/gitea'
-      src: "{{ _tmpdir.path }}/{{ _filename }}"
-      remote_src: true
-      owner: root
-      group: root
-      mode: 0755
-    notify: 'restart gitea'
-    when: "_tmpdir is not skipped"
+    - name: 'Install Gitea'
+      ansible.builtin.copy:
+        dest: '/usr/local/bin/gitea'
+        src: "{{ _tmpdir.path }}/{{ _filename }}"
+        remote_src: true
+        owner: root
+        group: root
+        mode: '0755'
+      notify: gitea_restart
+      when: "_tmpdir is not skipped"
 
-  when: "gitea_version != _current_gitea_version"
-
-- name: 'create Gitea system user group'
-  group:
+- name: 'Create Gitea system user group'
+  ansible.builtin.group:
     name: "{{ gitea_group }}"
     system: true
     state: present
 
-- name: 'create Gitea system user account'
-  user:
+- name: 'Create Gitea system user account'
+  ansible.builtin.user:
     name: "{{ gitea_user }}"
     password: '*'
     group: "{{ gitea_group }}"
@@ -119,32 +120,32 @@
     system: true
     state: present
 
-- name: 'check for MariaDB (systemd)'
-  stat:
+- name: 'Check for MariaDB (systemd)'
+  ansible.builtin.stat:
     path: '/lib/systemd/system/mariadb.service'
   register: _mariadb_service
   when: "gitea_database_type == 'mysql' and ansible_facts['service_mgr'] == 'systemd'"
 
-- name: 'check for MariaDB (non-systemd)'
-  stat:
+- name: 'Check for MariaDB (non-systemd)'
+  ansible.builtin.stat:
     path: '/etc/init.d/mariadb'
   register: _initd_mariadb
   when: "gitea_database_type == 'mysql' and ansible_facts['service_mgr'] != 'systemd'"
 
-- name: 'install systemd service file'
-  template:
+- name: 'Install systemd service file'
+  ansible.builtin.template:
     dest: '/etc/systemd/system/gitea.service'
-    src: 'gitea.service.j2'
+    src: gitea.service.j2
     owner: root
     group: root
-    mode: 0644
+    mode: '0644'
   when: "ansible_facts['service_mgr'] == 'systemd'"
 
-- name: 'install OpenRC init script'
-  template:
+- name: 'Install OpenRC init script'
+  ansible.builtin.template:
     dest: '/etc/init.d/gitea'
-    src: 'gitea.openrc.j2'
+    src: gitea.openrc.j2
     owner: root
     group: root
-    mode: 0755
+    mode: '0755'
   when: "ansible_facts['service_mgr'] == 'openrc'"

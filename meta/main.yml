@@ -1,24 +1,25 @@
+---
 galaxy_info:
-  author: Sebastian Hamann
-  description: Install and configure Gitea
+  author: 'Sebastian Hamann'
+  description: 'Install and configure Gitea'
 
   license: MIT
 
-  min_ansible_version: 2.10
+  min_ansible_version: '2.10'
 
   platforms:
-  - name: Gentoo
-    versions:
-      - any
-  - name: Debian
-    versions:
-      - buster
-  - name: Alpine
-    versions:
-      - any
-  - name: GenericLinux
-    versions:
-      - any
+    - name: Gentoo
+      versions:
+        - all
+    - name: Debian
+      versions:
+        - all
+    - name: Alpine
+      versions:
+        - all
+    - name: GenericLinux
+      versions:
+        - all
 
   galaxy_tags:
     - development

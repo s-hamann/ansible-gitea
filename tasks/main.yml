@@ -1,8 +1,8 @@
 ---
-- name: 'gather os specific variables'
-  include_vars: "{{ vars_file }}"
+- name: 'Gather OS specific variables'
+  ansible.builtin.include_vars: "{{ vars_file }}"
   loop:
-    - 'default.yml'
+    - default.yml
     - "{{ ansible_facts['os_family'] | lower }}.yml"
     - "{{ ansible_facts['distribution'] | lower }}.yml"
     - "{{ ansible_facts['distribution'] | lower }}-{{ ansible_facts['distribution_major_version'] }}.yml"
@@ -11,111 +11,111 @@
     loop_var: vars_file
   when: "(vars_file is abs and vars_file is file) or (vars_file is not abs and (role_path ~ '/vars/' ~ vars_file) is file)"
 
-- name: 'check for bash'
-  stat:
+- name: 'Check for bash'
+  ansible.builtin.stat:
     path: '/bin/bash'
   register: _bin_bash
 
-- name: 'ensure configuration consistency'
-  set_fact:
+- name: 'Ensure configuration consistency'
+  ansible.builtin.set_fact:
     gitea_use_pkg: "{{ gitea_has_pkg | bool and gitea_use_pkg | bool }}"
 
-- name: 'set user name to distribution package value'
-  set_fact:
+- name: 'Set user name to distribution package value'
+  ansible.builtin.set_fact:
     gitea_user: "{{ gitea_pkg_user }}"
     gitea_group: "{{ gitea_pkg_group }}"
   when: "gitea_use_pkg | bool"
 
-- name: 'install Gitea using the package manager'
-  package:
+- name: 'Install Gitea using the package manager'
+  ansible.builtin.package:
     name: "{{ gitea_pkg_name }}"
     state: present
-  notify: 'restart gitea'
+  notify: gitea_restart
   when: "gitea_use_pkg | bool"
 
-- name: 'install Gitea from binary'
-  include_tasks: install_gitea_binary.yml
+- name: 'Install Gitea from binary'
+  ansible.builtin.include_tasks: install_gitea_binary.yml
   when: "not gitea_use_pkg | bool"
 
-- name: 'install additional dependencies'
-  package:
+- name: 'Install additional dependencies'
+  ansible.builtin.package:
     name: "{{ pkg.pkg }}"
     state: present
   when: "pkg.when"
   loop:
-    - pkg: 'git-lfs'
+    - pkg: git-lfs
       when: "{{ gitea_enable_lfs | bool }}"
     - pkg: "{{ gitea_gnupg_package }}"
       when: "{{ gitea_enable_signing | bool }}"
   loop_control:
-    loop_var: 'pkg'
+    loop_var: pkg
     label: "{{ pkg.pkg }}"
 
-- name: "add {{ gitea_user }} to extra groups"
-  user:
+- name: "Add user {{ gitea_user }} to extra groups"
+  ansible.builtin.user:
     name: "{{ gitea_user }}"
     groups: "{{ gitea_extra_groups }}"
     append: true
-  notify: 'restart gitea'
-  when: "[gitea_extra_groups | default([])] | flatten | count"
+  notify: gitea_restart
+  when: "[gitea_extra_groups | default([])] | ansible.builtin.flatten | count"
 
-- name: "harden gitea.service"
+- name: "Harden gitea.service"
+  when: "ansible_facts['service_mgr'] == 'systemd'"
   block:
-    - name: "create override directory for gitea.service"
-      file:
+    - name: "Create override directory for gitea.service"
+      ansible.builtin.file:
         path: '/etc/systemd/system/gitea.service.d/'
         state: directory
         owner: root
         group: root
-        mode: 0755
+        mode: '0755'
 
-    - name: "install override file for gitea.service"
-      template:
+    - name: "Install override file for gitea.service"
+      ansible.builtin.template:
         dest: '/etc/systemd/system/gitea.service.d/override.conf'
-        src: 'gitea_override.conf.j2'
+        src: gitea_override.conf.j2
         owner: root
         group: root
-        mode: 0644
+        mode: '0644'
       notify:
-        - 'gitea_reload_service_files'
-        - 'restart gitea'
+        - gitea_reload_service_files
+        - gitea_restart
 
-  when: "ansible_facts['service_mgr'] == 'systemd'"
-
-- name: 'allow non-root users to bind to low ports'
-  sysctl:
-    name: 'net.ipv4.ip_unprivileged_port_start'
+- name: 'Allow non-root users to bind to low ports'
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_unprivileged_port_start
     value: '0'
     sysctl_file: '/etc/sysctl.d/unprivileged_ports.conf'
     state: present
   when: "ansible_facts['service_mgr'] != 'systemd' and gitea_port | int < 1024"
 
-- name: 'check if Gitea is already configured'
-  stat:
+- name: 'Check if Gitea is already configured'
+  ansible.builtin.stat:
     path: '/etc/gitea/app.ini'
   register: _stat_appini
 
-- name: 'read current config file'
-  slurp:
-    src:  '/etc/gitea/app.ini'
+- name: 'Read current config file'
+  ansible.builtin.slurp:
+    src: '/etc/gitea/app.ini'
   register: _slurp_appini
   when: "_stat_appini.stat.exists"
 
-- include_tasks: get_secrets.yml
+- name: 'Get configuration secret values'
+  ansible.builtin.include_tasks: get_secrets.yml
   loop:
-    - 'SECRET_KEY'
-    - 'INTERNAL_TOKEN'
-    - 'JWT_SECRET'
-    - 'LFS_JWT_SECRET'
+    - SECRET_KEY
+    - INTERNAL_TOKEN
+    - JWT_SECRET
+    - LFS_JWT_SECRET
   loop_control:
     loop_var: secret
 
-- name: 'combine default and custom options'
-  set_fact:
-    _gitea_options: "{{ gitea_default_options | combine(gitea_extra_options, recursive=True) }}"
+- name: 'Combine default and custom options'
+  ansible.builtin.set_fact:
+    _gitea_options: "{{ gitea_default_options | ansible.builtin.combine(gitea_extra_options, recursive=True) }}"
 
-- name: 'create required directories'
-  file:
+- name: 'Create required directories'
+  ansible.builtin.file:
     path: "{{ directory.path }}"
     state: directory
     owner: "{{ directory.owner | default(gitea_user) }}"
@@ -133,18 +133,18 @@
     loop_var: directory
     label: "{{ directory.path }}"
 
-- name: 'configure Gitea'
-  template:
+- name: 'Configure Gitea'
+  ansible.builtin.template:
     dest: '/etc/gitea/app.ini'
-    src: 'app.ini.j2'
+    src: app.ini.j2
     owner: root
     group: "{{ gitea_group }}"
-    mode: 0640
+    mode: '0640'
   no_log: true
-  notify: 'restart gitea'
+  notify: gitea_restart
 
-- name: 'unset secrets'
-  set_fact:
+- name: 'Unset secrets'
+  ansible.builtin.set_fact:
     _slurp_appini:
     _secret_value:
     _generate_secret:
@@ -153,8 +153,8 @@
     _JWT_SECRET:
     _LFS_JWT_SECRET:
 
-- name: 'create server-side commit signing key'
-  command: "su {{ gitea_user }} -c 'gpg --batch --generate-key'"
+- name: 'Create server-side commit signing key'
+  ansible.builtin.command: "su {{ gitea_user }} -c 'gpg --batch --generate-key'"
   args:
     creates: "{{ _gitea_options['git']['HOME_PATH'] | default(gitea_data_path ~ '/data/home') }}/.gnupg/private-keys-v1.d/"
     stdin: |
@@ -165,36 +165,37 @@
       Name-Real: {{ gitea_committer_name }}
       Name-Email: {{ gitea_committer_email }}
       # Discard the time, use only the date as the creation timestamp
-      Creation-Date: {{ lookup('pipe', 'date +%Y-%m-%d') }}
+      Creation-Date: {{ lookup('ansible.builtin.pipe', 'date +%Y-%m-%d') }}
   when: "gitea_enable_signing | bool"
 
-- name: 'configure git command line client'
-  ini_file:
+- name: 'Configure git command line client'
+  community.general.ini_file:
     path: "{{ _gitea_options['git']['HOME_PATH'] | default(gitea_data_path ~ '/data/home') }}/.gitconfig"
+    mode: '0644'
     section: "{{ item.section }}"
     option: "{{ item.option }}"
     value: "{{ item.value }}"
     state: present
   loop:
-    - section: 'commit'
-      option: 'gpgsign'
+    - section: commit
+      option: gpgsign
       value: "{{ gitea_enable_signing | bool | string | lower }}"
-    - section: 'user'
-      option: 'name'
+    - section: user
+      option: name
       value: "{{ gitea_committer_name }}"
-    - section: 'user'
-      option: 'email'
+    - section: user
+      option: email
       value: "{{ gitea_committer_email }}"
   loop_control:
     label: "{{ item.section }}.{{ item.option }} = {{ item.value }}"
 
-- name: 'initialise gitea database (this may take a long time)'
-  command: "su {{ gitea_user }} -c 'PATH=\"{{ ansible_facts['env']['PATH'] }}:/usr/local/bin\" gitea -c /etc/gitea/app.ini migrate'"
+- name: 'Initialise gitea database (this may take a long time)'
+  ansible.builtin.command: "su {{ gitea_user }} -c 'PATH=\"{{ ansible_facts['env']['PATH'] }}:/usr/local/bin\" gitea -c /etc/gitea/app.ini migrate'"
   args:
     chdir: "{{ gitea_data_path }}"
 
-- name: 'create initial local user accounts'
-  command: "su {{ gitea_user }} -c 'PATH=\"{{ ansible_facts['env']['PATH'] }}:/usr/local/bin\" gitea -c /etc/gitea/app.ini admin user create --username {{ user.name | quote }} --password {{ user.password | quote }} --email {{ user.email | quote }} {{ user.admin | default(false) | bool | ternary('--admin', '') }}'"
+- name: 'Create initial local user accounts'
+  ansible.builtin.command: "su {{ gitea_user }} -c 'PATH=\"{{ ansible_facts['env']['PATH'] }}:/usr/local/bin\" gitea -c /etc/gitea/app.ini admin user create --username {{ user.name | ansible.builtin.quote }} --password {{ user.password | ansible.builtin.quote }} --email {{ user.email | ansible.builtin.quote }} {{ user.admin | default(false) | bool | ansible.builtin.ternary('--admin', '') }}'"
   args:
     chdir: "{{ gitea_data_path }}"
   register: _create_user
@@ -206,7 +207,7 @@
     loop_var: user
     label: "{{ user.name }}"
 
-- name: 'configure external authentication sources'
+- name: 'Configure external authentication sources'
   gitea_auth:
     name: "{{ provider.name }}"
     type: "{{ provider.type }}"
@@ -243,21 +244,22 @@
     label: "{{ provider.name }}"
   no_log: "{{ provider.bind_password is defined or provider.client_secret is defined }}"
 
-- name: 'install custom files'
-  copy:
+- name: 'Install custom files'
+  ansible.builtin.copy:
     src: "{{ gitea_custom_files }}/"
     dest: "{{ gitea_custom_path }}"
     owner: root
     group: root
-    directory_mode: 0755
+    directory_mode: '0755'
   when: "gitea_custom_files is defined"
-  notify: 'restart gitea'
+  notify: gitea_restart
 
 # If the unit file changed, reload it now.
-- meta: flush_handlers
+- name: 'Trigger handlers'
+  ansible.builtin.meta: flush_handlers
 
-- name: 'enable and start Gitea'
-  service:
-    name: 'gitea'
+- name: 'Enable and start Gitea'
+  ansible.builtin.service:
+    name: gitea
     enabled: true
-    state: "{{ ansible_facts['is_chroot'] | ternary(omit, 'started') }}"
+    state: "{{ ansible_facts['is_chroot'] | ansible.builtin.ternary(omit, 'started') }}"
