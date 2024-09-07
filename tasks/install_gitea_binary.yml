@@ -20,6 +20,7 @@
       url: "{{ gitea_base_url }}"
       return_content: true
     register: _gitea_downloads
+    check_mode: false
 
   - name: 'determine latest version of Gitea'
     set_fact:
@@ -61,6 +62,7 @@
       - "{{ _filename }}.asc"
     loop_control:
       loop_var: filename
+    when: "_tmpdir is not skipped"
 
   - name: 'create temporary GnuPG directory'
     file:
@@ -70,6 +72,7 @@
       group: root
       mode: 0700
     diff: false
+    when: "_tmpdir is not skipped"
 
   - name: 'get the PGP keys'
     command: "gpg --keyserver hkps://keys.openpgp.org --no-default-keyring --keyring trustedkeys.kbx --recv-key {{ gitea_pgp_fingerprint | quote }}"
@@ -77,12 +80,14 @@
       GNUPGHOME: "{{ _tmpdir.path }}/.gnupg"
     register: '_gpg_recv_key'
     changed_when: "_gpg_recv_key is not failed and 'imported:' in _gpg_recv_key.stderr"
+    when: "_tmpdir is not skipped"
 
   - name: 'verify signature'
     command: "gpgv '{{ _tmpdir.path }}/{{ _filename }}.asc' '{{ _tmpdir.path }}/{{ _filename }}'"
     environment:
       GNUPGHOME: "{{ _tmpdir.path }}/.gnupg"
     changed_when: false
+    when: "_tmpdir is not skipped"
 
   - name: 'install gitea'
     copy:
@@ -93,6 +98,7 @@
       group: root
       mode: 0755
     notify: 'restart gitea'
+    when: "_tmpdir is not skipped"
 
   when: "gitea_version != _current_gitea_version"
 
